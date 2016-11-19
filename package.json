@@ -1,0 +1,14 @@
+{
+  "name": "modelux",
+  "version": "0.0.4",
+  "description": "State management built on top of Redux to simplify the API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "MathieuLarocque <mathieularocque@hotmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "redux": "^3.6.0"
+  }
+}

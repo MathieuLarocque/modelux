@@ -1,0 +1,63 @@
+Arguments: 
+  /Users/malarocq/n/bin/node /usr/local/bin/yarn
+
+PATH: 
+  /Users/malarocq/.yarn/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/malarocq/n/bin
+
+Yarn version: 
+  0.16.1
+
+Node version: 
+  7.0.0
+
+Platform: 
+  darwin x64
+
+npm manifest: 
+  {
+    "name": "todos",
+    "version": "0.0.1",
+    "private": true,
+    "devDependencies": {
+      "enzyme": "^2.4.1",
+      "react-addons-test-utils": "^15.3.0",
+      "react-scripts": "^0.4.0"
+    },
+    "dependencies": {
+      "react": "^15.3.0",
+      "react-dom": "^15.3.0",
+      "react-redux": "^4.4.5",
+      "redux": "^3.5.2"
+    },
+    "scripts": {
+      "start": "react-scripts start",
+      "build": "react-scripts build",
+      "eject": "react-scripts eject",
+      "test": "react-scripts test"
+    },
+    "eslintConfig": {
+      "extends": "./node_modules/react-scripts/config/eslint.js"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+bower manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
+
+Trace: 
+  Error: https://registry.yarnpkg.com/es6-templates/-/es6-templates-0.2.3.tgz: invalid tar file
+      at Extract.Parse._startEntry (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/tar/lib/parse.js:149:13)
+      at Extract.Parse._process (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/tar/lib/parse.js:131:12)
+      at BlockStream.<anonymous> (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/tar/lib/parse.js:47:8)
+      at emitOne (events.js:96:13)
+      at BlockStream.emit (events.js:188:7)
+      at BlockStream._emitChunk (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/block-stream/block-stream.js:145:10)
+      at BlockStream.flush (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/block-stream/block-stream.js:70:8)
+      at BlockStream.end (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/block-stream/block-stream.js:66:8)
+      at Extract.Parse.end (/usr/local/Cellar/yarn/0.16.1/libexec/lib/node_modules/yarn/node_modules/tar/lib/parse.js:86:23)
+      at UnpackStream.onend (_stream_readable.js:511:10)
