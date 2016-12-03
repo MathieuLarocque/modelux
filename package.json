@@ -1,7 +1,7 @@
 {
   "name": "modelux",
   "version": "0.0.4",
-  "description": "State management built on top of Redux to simplify the API",
+  "description": "State management built with React in mind",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,6 +9,6 @@
   "author": "MathieuLarocque <mathieularocque@hotmail.com>",
   "license": "ISC",
   "dependencies": {
-    "redux": "^3.6.0"
+    "immutable": "^3.8.1"
   }
 }
