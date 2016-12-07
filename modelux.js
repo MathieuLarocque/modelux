@@ -51,7 +51,7 @@ function ModeluxController (model, listeners, store) {
         };
     }
     function createSetState(propPath, listeners) {
-        console.log(propPath, listeners);
+        // console.log(propPath, listeners);
         return function (newState) {
             if (typeof newState === 'function' || newState instanceof Promise) {
                 throw new Error('You cannot set the state to a function or a promise');
@@ -64,6 +64,8 @@ function ModeluxController (model, listeners, store) {
         };
     }
     function createControllerMethod (model, controller, listeners, propPath, prop) {
+        // var setState = controller.setState;
+        // console.log(controller);
         return function () {
             var args = arguments;
             return new Promise(function (resolve, reject) {
@@ -128,6 +130,7 @@ function ModeluxController (model, listeners, store) {
                 if (model[prop] instanceof ModeluxController) {
                     controller[prop] = model[prop];
                 } else if (propPath && typeof model[prop] === 'function' && prop !== 'getState' && prop !== 'setState') {
+                    console.log(controller);
                     controller[prop] = createControllerMethod(model, controller, listeners, propPath, prop);
                 } else if (typeof model[prop] === 'object' && prop !== 'initial') {
                     listeners[prop] = [];
@@ -147,11 +150,7 @@ function ModeluxController (model, listeners, store) {
                     throw new Error('All properties of the model should be methods');
                 }
                 if (prop === 'initial' && typeof model.initial === 'function') {
-                    controller.setState = function (newState) {
-                        store = store.setIn(propPath, newState);
-                    }
                     var newState = model.initial();
-                    controller.setState = null;
                     if (newState !== undefined) {
                         store = store.setIn(propPath, newState);
                     }

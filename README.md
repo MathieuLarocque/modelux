@@ -38,10 +38,10 @@ You will notice above that I called the result `model` instead of controller. Th
 
 ## return value
 
-The state can be changed two ways. The first way is to return a value from a method of the model. The return value will become the new state of this specific property in the model. In other words, doing
+The state can be changed two ways. The first way is to return a value from a method of the model. The return value will become the new state of this specific property in the model. In other words, using the example above and doing
 
 ``` javascript
-model.prop.methd(arg)
+model.prop.method(arg)
 ```
 and then doing this
 
@@ -65,7 +65,7 @@ The second way is to use the setState function that can be used with the `this` 
 var model = createController({
     prop: {
         method(sec) {
-            setTimeout(() => this.setState(sec + ' second has passed'), 1000 * sec);
+            setTimeout(() => this.setState(sec + ' second'+ sec>1 ? 's' : '' +' has passed'), 1000 * sec);
             return 'pending';
         }
     }
@@ -157,11 +157,61 @@ function createControllerMethod (model, controller, listeners, propPath, prop) {
 }
 ```
 
-Notice that the controller also has a resolveSetState as a shorthand.
+Notice that the controller also has a resolveSetState as a shorthand for both setState and resolve.
 
 ## initial
 
 There is a special property name called ```initial``` which is used to set the initial value of the property. If it is a function it will be called on initialisation. It will have access to this.setState function if asynchronous setting is needed.
+
+## using with React
+
+Modelux binds with React components by using the setState function of the component instead of wrapping the component with an extra stateful component, like Redux and Mobx do. This makes using the React dev tools much easier to use. Also, the Redux connect function maps the state properties to the props, making it hard, when reading the component code, to figure out what is a prop passed from the parents component and what is really a state. Here is how you bind the component.
+
+``` javascript
+var model = createController({
+    prop1: {
+        prop2: {
+            method(arg) {}
+        }
+    }
+});
+class App extends React.Component {
+  constructor(props){
+    super(props)
+    model.prop1.prop2.bind(this);
+  }
+  render(){
+    return (
+      <div>
+        <div>This is prop2: {this.state.prop1.prop2}</div>
+        <button onClick={e => model.prop1.prop2.method()}>Do something</button>
+      </div>
+    )
+  }
+}
+```
+
+The constructor is used to set a listener that will call setState when this particular property of the model is changed. Because the bind function also returns the initial state, you can also do this with the createClass function this way:
+
+``` javascript
+var App = React.createClass({
+    getInitialState() {
+        return {
+            prop1: {
+                prop2: model.prop1.prop2.bind(this)
+            }
+        };
+    },
+    render(){
+        return (
+            <div>
+            <div>This is prop2: {this.state.prop1.prop2}</div>
+            <button onClick={e => model.prop1.prop2.method()}>Do something</button>
+            </div>
+        )
+    }
+}); 
+```
 
 ## Examples
 
@@ -199,3 +249,4 @@ export default createController({
 });
 ```
 
+There is no use of asynchronous setting of state in this example and that is where this library truly shines when compared to Redux, where side-effects of actions should be handled in middleware in order to keep reducers purely functional. With Redux, there is no official way to do this, steepening the learning curve for beginners. There are more examples to come to show these potential benefits.

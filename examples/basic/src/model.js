@@ -1,30 +1,27 @@
 import { createController } from '../../../modelux';
-var m = {
+import delay from 'delay';
+export default createController({
     times: {
         initial: {
             active: 8
         },
         add: function (n) {
-            var s = this.getState(['other', 'times']);
             n = n || 1;
-            // var setState = this.createSetState();
-            var {setState} = this;
-            console.log(s, n, arguments);
-            setTimeout(() => {
-                setState({active: s.active + n})
-                .then(() => this.remove(s))
-                .then(function (a) {
-                    console.log('React is done rendering:', a);
-                });
-            }, 1000);
+            var other = this.getState(['other', 'times']);
+            var s = this.getState();
+            delay(1000)
+                .then(() => this.setState({active: s.active + other.active + n}))
+                .then(this.resolve);
             return {active: 'loading...'};
         },
-        remove: function (s) {
-            var {setState} = this;
-            console.log(s);
-            setTimeout(() => {
-                setState({active: s.active - 1})
-            }, 1000);
+        remove: function (n) {
+            n = n || 1;
+            var other = this.getState(['other', 'times']);
+            var s = this.getState();
+            delay(1000)
+                .then(() => this.setState({active: s.active - other.active - n}))
+                .then(this.resolve);
+            return {active: 'loading...'};
         }
     },
     other: {
@@ -38,39 +35,12 @@ var m = {
                 }
             },
             oneMore: function () {
-                var s = this.getState();
-                // var setState = this.createSetState();
-                var {setState} = this;
-                setTimeout(() => {
-                    setState({active: ++s.active})
-                    .then(function (a) {
-                        console.log('React is done rendering:', a);
-                    });
-                }, 2000);
+                var s = this.getState()
+                delay(1000)
+                    .then(() => this.setState({active: ++s.active}))
+                    .then(this.resolve);
                 return {active: 'loading...'};
             }
         }
     }
-};
-// console.log(m);
-export var c = createController(m);
-console.log(c);
-
-var m2 = {
-    otherProp: {
-        initial: 'another thing',
-        change: function () {
-            return 'that same thing';
-        }
-    }
-}
-export var c2 = createController(m2);
-// var v = createController({
-//     c: c,
-//     featureX: {
-//         initial: 'hello'
-//     }
-// });
-// console.log(v);
-
-// export default c;
+});
