@@ -2,35 +2,37 @@
 var Immutable = require('immutable');
 
 function createReactListener (comp) {
-    return function (newState, propPath, resolve) {
-        // console.log(comp.state, newState);
-        comp.state = comp.state || {};
-        var temp = comp.state;
-        if (!propPath) {
-            throw new Error('no prop path in listener');
-        }
-        for (var i = 0; i < propPath.length; i++) {
-            var prop = propPath[i];
-            if (i < (propPath.length - 1)) {
-                if (typeof temp[prop] !== 'object') {
-                    temp[prop] = {};
-                }
-                temp = temp[prop];
-            } else {
-                temp[prop] = newState;
+    return {
+        comp: comp,
+        func: function (newState, propPath, resolve) {
+            // console.log(comp.state, newState);
+            comp.state = comp.state || {};
+            var temp = comp.state;
+            if (!propPath) {
+                throw new Error('no prop path in listener');
             }
-        }
-        // console.log(comp.state, newState);
-        if (resolve) {
-            comp.setState.call(comp, comp.state, function () {
-                resolve(comp.state)
-            });
-        } else {
-            comp.setState.call(comp, comp.state);
+            for (var i = 0; i < propPath.length; i++) {
+                var prop = propPath[i];
+                if (i < (propPath.length - 1)) {
+                    if (typeof temp[prop] !== 'object') {
+                        temp[prop] = {};
+                    }
+                    temp = temp[prop];
+                } else {
+                    temp[prop] = newState;
+                }
+            }
+            // console.log(comp.state, newState);
+            if (resolve) {
+                comp.setState.call(comp, comp.state, function () {
+                    resolve(comp.state)
+                });
+            } else {
+                comp.setState.call(comp, comp.state);
+            }
         }
     }
 }
-
 function createSubscriber (listeners) {
     return function (listener) {
         if (typeof listener === 'function' && listeners.indexOf(listener) === -1) {
@@ -58,7 +60,7 @@ function ModeluxController (model, listeners, store) {
             }
             store = store.setIn(propPath, newState);
             for (var i in listeners) {
-                listeners[i](newState, propPath);
+                listeners[i].func(newState, propPath);
             }
             return Promise.resolve(newState);
         };
@@ -118,7 +120,37 @@ function ModeluxController (model, listeners, store) {
                 var initialValue = store.get(prop);
                 comp.state[prop] = initialValue;
             }
-            listeners.push(createReactListener(comp));
+            // console.log(comp.componentWillMount);
+            
+            if (typeof comp.componentWillMount === 'function') {
+                var compComponentWillMount = comp.componentWillMount;
+                comp.componentWillMount = function () {
+                    listeners.push(createReactListener(comp));
+                    compComponentWillMount.call(comp);
+                }
+            } else {
+                comp.componentWillMount = function () {
+                    listeners.push(createReactListener(comp));
+                }
+            }
+            if (typeof comp.componentWillUnmount === 'function') {
+                var compComponentWillUnmount = comp.componentWillUnmount;
+                comp.componentWillUnmount = function () {
+                    var i = listeners.findIndex(function (l) {
+                        return l.comp === comp
+                    })
+                    listeners.splice(i, 1);
+                    compComponentWillUnmount.call(comp);
+                }
+            } else {
+                comp.componentWillUnmount = function () {
+                    var i = listeners.findIndex(function (l) {
+                        return l.comp === comp
+                    })
+                    listeners.splice(i, 1);
+                }
+            }
+            
             // console.log(comp.state);
             // console.log(comp);
             return initialValue;
@@ -130,7 +162,7 @@ function ModeluxController (model, listeners, store) {
                 if (model[prop] instanceof ModeluxController) {
                     controller[prop] = model[prop];
                 } else if (propPath && typeof model[prop] === 'function' && prop !== 'getState' && prop !== 'setState') {
-                    console.log(controller);
+                    // console.log(controller);
                     controller[prop] = createControllerMethod(model, controller, listeners, propPath, prop);
                 } else if (typeof model[prop] === 'object' && prop !== 'initial') {
                     listeners[prop] = [];

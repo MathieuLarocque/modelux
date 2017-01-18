@@ -26,11 +26,13 @@ export default class VisibleTodoList extends React.Component {
     return (
       <ul>
         {todos.map(todo =>
-          <Todo
-            key={todo.id}
+          <li key={todo.id}><Todo
+            id={todo.id}
             {...todo}
             onClick={() => model.todos.toggle(todo.id)}
           />
+          <button onClick={() => model.todos.remove(todo.id)}>X</button>
+          </li>
         )}
       </ul>
     )

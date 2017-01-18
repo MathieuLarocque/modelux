@@ -11,6 +11,9 @@ export default createController({
             };
             return this.getState().concat(todo);
         },
+        remove: function (id) {
+            return this.getState().filter(todo => todo.id !== id);
+        },
         toggle: function(todoId) {
             return this.getState().map(todo => {
                 if (todo.id === todoId) {
@@ -24,6 +27,17 @@ export default createController({
         initial: 'SHOW_ALL',
         set: function(newFilter) {
             return newFilter;
+        }
+    },
+    color: {
+        initial: 'red',
+        toggle: function () {
+            var s = this.getState();
+            if (s === 'red') {
+                return 'green'
+            } else {
+                return 'red'
+            }
         }
     }
 });
