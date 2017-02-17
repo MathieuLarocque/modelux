@@ -8,7 +8,7 @@ export default createModel({
         },
         add: function(text) {
             var c = counter++;
-            this.setState(state => ({list: state.list.map(t => {
+            this.setState(state => state.list.map(t => {
                 if (t.id !== c) {
                     return t;
                 } else {
@@ -17,8 +17,8 @@ export default createModel({
                         color: 'green'
                     }
                 }
-            })}));
-            return state => ({list: state.list.map(t => {
+            }));
+            return state => state.list.map(t => {
                 if (t.id !== c) {
                     return t;
                 } else {
@@ -29,7 +29,7 @@ export default createModel({
                         color: 'blue'
                     }
                 }
-            })});
+            });
         },
         toggle: function(todoId) {
             return state => state.map(todo => {
