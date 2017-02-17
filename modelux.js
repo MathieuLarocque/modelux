@@ -1,181 +1,187 @@
 "use strict";
-var Immutable = require('immutable');
 
 function createReactListener (comp) {
-    return function (newState, propPath, resolve) {
-        // console.log(comp.state, newState);
-        comp.state = comp.state || {};
-        var temp = comp.state;
-        if (!propPath) {
-            throw new Error('no prop path in listener');
-        }
-        for (var i = 0; i < propPath.length; i++) {
-            var prop = propPath[i];
-            if (i < (propPath.length - 1)) {
-                if (typeof temp[prop] !== 'object') {
-                    temp[prop] = {};
-                }
-                temp = temp[prop];
+    return {
+        comp: comp,
+        func: function (newState, resolve) {
+            // console.log(comp.state, newState);
+            if (resolve) {
+                comp.setState.call(comp, newState, function () {
+                    resolve(newState)
+                });
             } else {
-                temp[prop] = newState;
+                comp.setState.call(comp, newState);
             }
         }
-        // console.log(comp.state, newState);
-        if (resolve) {
-            comp.setState.call(comp, comp.state, function () {
-                resolve(comp.state)
-            });
+    }
+}
+
+function Modelux (controller) {
+    var store = {};
+    var model = this;
+    var listeners = {};
+    var subscribers = [];
+    function update (s, piece, method, args, isSetState) {
+        if (s === undefined) {
+            return;
+        } else if (typeof s === 'function') {
+            // console.log('function:',s);
+            return update(s(store[piece], function (piece) {
+                return Object.assign({}, store[piece]);
+            }), piece, method, args, isSetState);
+        } else if (typeof s !== 'object') {
+            console.log(s);
+            throw new Error('Piece of state must be an object');
+        } else if (Promise && s instanceof Promise) {
+            // console.log('promise:',s);
+            return s.then(function (_s) {return update(_s, piece, method, args, isSetState)});
         } else {
-            comp.setState.call(comp, comp.state);
-        }
-    }
-}
-
-function createSubscriber (listeners) {
-    return function (listener) {
-        if (typeof listener === 'function' && listeners.indexOf(listener) === -1) {
-            listeners.push(listener);
-        }
-    }
-}
-
-function ModeluxController (model, listeners, store) {
-    function createGetState(propPath) {
-        return function (arg) {
-            if (arg && typeof arg === 'object' && arg.length) {
-                return store.getIn(arg);
-            } else if (arg && typeof arg === 'string') {
-                return store.get(arg);
-            }
-            return store.getIn(propPath);
-        };
-    }
-    function createSetState(propPath, listeners) {
-        // console.log(propPath, listeners);
-        return function (newState) {
-            if (typeof newState === 'function' || newState instanceof Promise) {
-                throw new Error('You cannot set the state to a function or a promise');
-            }
-            store = store.setIn(propPath, newState);
-            for (var i in listeners) {
-                listeners[i](newState, propPath);
-            }
-            return Promise.resolve(newState);
-        };
-    }
-    function createControllerMethod (model, controller, listeners, propPath, prop) {
-        // var setState = controller.setState;
-        // console.log(controller);
-        return function () {
-            var args = arguments;
-            return new Promise(function (resolve, reject) {
-                controller.resolve = resolve;
-                controller.reject = reject;
-                controller.resolveSetState = function (newState) {
-                    controller.setState(newState);
-                    resolve(newState);
-                }
-                // console.log(args.length);
-                var newState = model[prop].apply(controller, args);
-                // console.log(prop, model[prop], newState);
-                controller.reject = function () {
-                    throw new Error('The reject function is only available synchronously. Make sure you retrieve it from the "this" object before using it asynchronously. For example, you can use destructuring like so:  var { reject } = this;');
-                };
-                controller.resolve = function () {
-                    throw new Error('The resolve function is only available synchronously. Make sure you retrieve it from the "this" object before using it asynchronously. For example, you can use destructuring like so:  var { resolve } = this;');
-                };
-                controller.resolveSetState = function () {
-                    throw new Error('The resolveSetState function is only available synchronously. Make sure you retrieve it from the "this" object before using it asynchronously. For example, you can use destructuring like so:  var { resolveSetState } = this;');
-                };
-                if (newState !== undefined) {
-                    // console.log(controller)
-                    controller.setState(newState);
-                }
+            // console.log('object:', s);
+            var copy = Object.assign({}, store[piece], s);
+            dispatch({
+                type: isSetState ? piece+'.'+method+'.setState' : piece+'.'+method,
+                piece: piece,
+                method: method,
+                args: args,
+                isSetState: isSetState,
+                state: copy
             });
+            
+            return copy;
         }
     }
-    function createBinder (listeners, propPath, prop) {
-        return function (comp) {
+    function Piece (piece, pieceProto) {
+        listeners[piece] = [];
+        var modelPiece = this; 
+        function wrapMethod(method) {
+            return function () {
+                var args = arguments;
+                return new Promise(function (resolve, reject) {
+                    model[piece].setState = function (newState) {
+                        try {
+                            var ns = update(newState, piece, method, args, true);
+                            resolve(ns);
+                            return ns;
+                        } catch (e) {
+                            reject(e);
+                            return e;
+                        }
+                    };
+                    update(controller[piece][method].apply(model[piece], args), piece, method, args, false);
+                    model[piece].setState = function () {
+                        throw new Error('The setState function is only available synchronously. Make sure you retrieve it from the "this" object before using it asynchronously. For example, you can use destructuring like so:  var { setState } = this;');
+                    };
+                });
+            };
+        }
+        function bind(comp) {
             // console.log(comp.state);
             comp.state = comp.state || {};
-            if (propPath && propPath.length) {
-                var path = [].concat(propPath, prop);
-                var initialValue = store.getIn(path);
-                // console.log(path, prop, initialValue);
-                var temp = {};
-                var root = temp;
-                for (var i = 1; i < path.length; i++) {
-                    if (i < (path.length - 1)) {
-                        temp[path[i]] = {};
-                        temp = temp[path[i]];
-                    } else {
-                        temp[path[i]] = initialValue;
-                    }
-                    // console.log(temp)
+            var initialState = store[piece];
+            comp.state[piece] = initialState;
+            if (typeof comp.componentWillMount === 'function') {
+                var compComponentWillMount = comp.componentWillMount;
+                comp.componentWillMount = function () {
+                    listeners[piece].push(createReactListener(comp));
+                    compComponentWillMount.call(comp);
                 }
-                comp.state[path[0]] = root;
             } else {
-                var initialValue = store.get(prop);
-                comp.state[prop] = initialValue;
+                comp.componentWillMount = function () {
+                    listeners[piece].push(createReactListener(comp));
+                }
             }
-            listeners.push(createReactListener(comp));
+            if (typeof comp.componentWillUnmount === 'function') {
+                var compComponentWillUnmount = comp.componentWillUnmount;
+                comp.componentWillUnmount = function () {
+                    var i = listeners[piece].findIndex(function (l) {
+                        return l.comp === comp
+                    })
+                    listeners[piece].splice(i, 1);
+                    compComponentWillUnmount.call(comp);
+                }
+            } else {
+                comp.componentWillUnmount = function () {
+                    var i = listeners[piece].findIndex(function (l) {
+                        return l.comp === comp
+                    })
+                    listeners[piece].splice(i, 1);
+                }
+            }
             // console.log(comp.state);
             // console.log(comp);
-            return initialValue;
+            return initialState;
         }
-    }
-    function recursiveLoop (model, controller, listeners, propPath) {
-        for (var prop in model) {
-            if (model.hasOwnProperty(prop)) {
-                if (model[prop] instanceof ModeluxController) {
-                    controller[prop] = model[prop];
-                } else if (propPath && typeof model[prop] === 'function' && prop !== 'getState' && prop !== 'setState') {
-                    console.log(controller);
-                    controller[prop] = createControllerMethod(model, controller, listeners, propPath, prop);
-                } else if (typeof model[prop] === 'object' && prop !== 'initial') {
-                    listeners[prop] = [];
-                    controller[prop] = {};
-                    propPath = propPath || [];
-                    var newPropPath = [].concat(propPath, prop);
-                    // console.log(newPropPath);
-                    controller[prop].getState = createGetState(newPropPath);
-                    controller[prop].setState = createSetState(newPropPath, listeners[prop]);
-                    controller[prop].subscribe = createSubscriber(listeners[prop]);
-                    controller[prop].bind = createBinder(listeners[prop], propPath, prop);
-                    recursiveLoop(model[prop], controller[prop], listeners[prop], newPropPath);
-                } else if (prop !== 'initial' && prop !== 'getState' && prop !== 'setState') {
-                    console.log(prop);
-                    console.log(model[prop]);
-                    console.log(model);
-                    throw new Error('All properties of the model should be methods');
-                }
-                if (prop === 'initial' && typeof model.initial === 'function') {
-                    var newState = model.initial();
-                    if (newState !== undefined) {
-                        store = store.setIn(propPath, newState);
-                    }
-                    // console.log(store.toJSON());
-                    
-                } else if (prop === 'initial') {
-                    store = store.setIn(propPath, model.initial);
-                    // console.log(store.toJSON());
-                }
+        for (var globalMethod in pieceProto) {
+            if (!controller[piece].hasOwnProperty(globalMethod)) {
+                controller[piece][globalMethod] = pieceProto[globalMethod];
+            }
+        }
+        modelPiece.bind = bind;
+        for (var method in controller[piece]) {
+            if (controller[piece].hasOwnProperty(method) && method === 'initialState') {
+                update(controller[piece].initialState, piece, method, null, false);
+            } else if (controller[piece].hasOwnProperty(method) && typeof controller[piece][method] === 'function') {
+                modelPiece[method] = wrapMethod(method);
             }
         }
     }
-    this.getState = function (arg) {
-        if (arg && typeof arg === 'object' && arg.length) {
-            return store.getIn(arg);
-        } else if (arg && typeof arg === 'string') {
-            return store.get(arg);
+    var pieceProto = {};
+    for (var globalMethod in controller) {
+        if (controller.hasOwnProperty(globalMethod) && typeof controller[globalMethod] === 'function') {
+            pieceProto[globalMethod] = controller[globalMethod];
         }
-        return store.toJSON();
     }
-    recursiveLoop(model, this, listeners);   
+    for (var piece in controller) {
+        if (controller.hasOwnProperty(piece)) {
+            if (typeof controller[piece] === 'object' && piece !== 'initialState') {
+                model[piece] = new Piece(piece, pieceProto);
+            } else if (typeof controller[piece] === 'function' && piece !== 'initialState') {
+                // model[piece]
+            }
+        }
+    }
+    model.getState = function () {
+        return Object.assign({}, store);
+    }
+    model.setState = function (s) {
+        store = Object.assign(store, s);
+        for (var piece in listeners) {
+            if (listeners.hasOwnProperty(piece) && s.hasOwnProperty(piece)) {
+                listeners[piece].forEach(function (l) {
+                    l.func({[piece]: store[piece]});
+                });
+            }
+        }
+    }
+    
+    function subscribe (f) {
+        if (subscribers.indexOf(f) === -1 && typeof f === 'function') {
+            subscribers.push(f);
+        }
+    }
+    model.subscribe = subscribe; 
+    function dispatch (action) {
+        store[action.piece] = action.state;
+        listeners[action.piece].forEach(function (l) {
+            l.func({[action.piece]: action.state})
+        });
+        subscribers.forEach(function (f) {f(action)});
+    }
+    model.dispatch = dispatch;
 }
 
-exports.createController = function (globalModel) {
-    var globalListeners = {}; 
-    var store = Immutable.Map({});
-    return new ModeluxController(globalModel, globalListeners, store);
+exports.createModel = function (controller) {
+    return new Modelux(controller);
 };
+
+exports.createActionCreators = function (model) {
+    var wrapper = {};
+    for (var piece in model) {
+        wrapper[piece] = {};
+        for (var method in model[piece]) {
+            wrapper[piece][method] = function () {
+                model[piece][method];
+            }
+        }
+    }
+}

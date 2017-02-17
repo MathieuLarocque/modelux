@@ -1,45 +1,31 @@
-import { createController } from '../../../modelux';
+import { createModel } from '../../../modelux';
 import delay from 'delay';
-export default createController({
+
+export default createModel({
+    add: function () {
+        this.setState(delay(2000)
+            .then(() => (s, g) => ({
+                active: s.active + 1,
+                color: s.color === 'red' ? 'green' : 'red'
+            }))
+        );
+        return (s, g) => delay(1000)
+            .then(() => ({
+                active: s.active + 1,
+                color: s.color === 'red' ? 'green' : 'red'
+            }));
+    },
     times: {
-        initial: {
-            active: 8
-        },
-        add: function (n) {
-            n = n || 1;
-            var other = this.getState(['other', 'times']);
-            var s = this.getState();
-            delay(1000)
-                .then(() => this.setState({active: s.active + other.active + n}))
-                .then(this.resolve);
-            return {active: 'loading...'};
-        },
-        remove: function (n) {
-            n = n || 1;
-            var other = this.getState(['other', 'times']);
-            var s = this.getState();
-            delay(1000)
-                .then(() => this.setState({active: s.active - other.active - n}))
-                .then(this.resolve);
-            return {active: 'loading...'};
+        initialState: {
+            active: 5,
+            color: 'red'
         }
     },
     other: {
-        add: function () {
-            this.times.oneMore();
-        },
-        times: {
-            initial: function () {
-                return {
-                    active: 3
-                }
-            },
-            oneMore: function () {
-                var s = this.getState()
-                delay(1000)
-                    .then(() => this.setState({active: ++s.active}))
-                    .then(this.resolve);
-                return {active: 'loading...'};
+        initialState: function () {
+            return {
+                active: 3,
+                color: 'green'
             }
         }
     }
